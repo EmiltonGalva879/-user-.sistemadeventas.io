@@ -64,6 +64,24 @@ function saveProduct(product) {
   DB.set('products', products);
 }
 
+function saveQuickProduct(name, price, stock, minStock, barcode) {
+  const products = DB.get('products');
+  const newProduct = {
+    id: Date.now(),
+    name: name,
+    price: parseFloat(price),
+    stock: parseInt(stock) || 0,
+    minStock: parseInt(minStock) || 5,
+    barcode: barcode,
+    created: new Date().toISOString()
+  };
+  products.push(newProduct);
+  DB.set('products', products);
+  state.modal = null;
+  render();
+  alert('Producto agregado: ' + name);
+}
+
 function deleteProduct(id) {
   const products = DB.get('products').filter(p => p.id !== id);
   DB.set('products', products);
@@ -558,10 +576,6 @@ function renderLogin() {
           </div>
           <button type="submit" class="btn btn-primary" style="width:100%">Iniciar Sesión</button>
         </form>
-        <div style="margin-top:24px;text-align:center;color:#64748b;font-size:13px">
-          <p>Cuenta por defecto:</p>
-          <p><strong>Usuario:</strong> admin | <strong>Contraseña:</strong> admin123</p>
-        </div>
       </div>
     </div>
   `;
@@ -712,10 +726,12 @@ function scanProductBarcode(code) {
     } else {
       alert('Sin stock: ' + product.name);
     }
+    render();
   } else {
-    alert('Producto no encontrado: ' + code);
+    // Abrir modal para agregar producto con código pre-llenado
+    state.modal = { type: 'quickAddProduct', barcode: code };
+    render();
   }
-  render();
   setTimeout(function() { var inp = document.getElementById('scanner-prod'); if(inp) { inp.value = ''; inp.focus(); } }, 100);
 }
 
@@ -916,6 +932,31 @@ function renderModal() {
             </div>
             <p style="margin-top:20px;color:#64748b;font-size:12px">* Crédito: se cobrará 5% extra después de 30 días</p>
           </div>
+        </div>
+      </div>
+    `;
+  } else if (m.type === 'quickAddProduct') {
+    html = `
+      <div class="modal-overlay" onclick="state.modal=null;render()">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-header"><h2 class="modal-title">Agregar Producto</h2><button class="btn btn-secondary" onclick="state.modal=null;render()">✕</button></div>
+          <form onsubmit="event.preventDefault();saveQuickProduct(this.n.value,this.pr.value,this.s.value,this.m.value,this.b.value)">
+            <div class="modal-body">
+              <div class="alert-box" style="background:#dbeafe;color:#1e40af;border-color:#93c5fd;margin-bottom:15px">
+                Código detectado: <strong>${m.barcode}</strong>
+              </div>
+              <div class="form-group"><label>Nombre *</label><input class="form-control" name="n" placeholder="Nombre del producto" required></div>
+              <div class="form-row">
+                <div class="form-group"><label>Precio *</label><input class="form-control" name="pr" type="number" step="0.01" placeholder="0.00" required></div>
+                <div class="form-group"><label>Stock</label><input class="form-control" name="s" type="number" value="0"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Stock Mínimo</label><input class="form-control" name="m" type="number" value="5"></div>
+                <div class="form-group"><label>Código</label><input class="form-control" name="b" value="${m.barcode}" readonly style="background:#f3f4f6"></div>
+              </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="state.modal=null;render()">Cancelar</button><button type="submit" class="btn btn-primary">Agregar</button></div>
+          </form>
         </div>
       </div>
     `;
